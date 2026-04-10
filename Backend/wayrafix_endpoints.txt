@@ -1,0 +1,96 @@
+===================================================
+  WAYRAFIX BACKEND - EJEMPLOS PARA PROBAR ENDPOINTS
+===================================================
+
+Asegúrate de que tu servidor esté corriendo en: http://localhost:3000
+
+---
+1. AUTENTICACIÓN (Rutas públicas)
+---
+
+> Registro de un Admin (POST)
+URL: http://localhost:3000/api/auth/register
+Body (JSON):
+{
+    "name": "Admin Principal",
+    "email": "admin@wayrafix.com",
+    "password": "supersecretpassword"
+}
+
+> Login (POST)
+URL: http://localhost:3000/api/auth/login
+Body (JSON):
+{
+    "email": "admin@wayrafix.com",
+    "password": "supersecretpassword"
+}
+
+
+---
+2. GRÚAS
+---
+
+> Crear Grúa (POST)
+URL: http://localhost:3000/api/gruas
+Body (JSON):
+{
+    "placa": "ABF-1234",
+    "conductor": "Carlos Lopez",
+    "telefono": "+51999888777",
+    "tipo": "Remolque cama plana",
+    "capacidad_kg": 3000
+}
+
+> Listar Grúas Disponibles (GET)
+URL: http://localhost:3000/api/gruas/availables
+Body: (Ninguno)
+
+> Asignar Grúa a Solicitud (POST)
+URL: http://localhost:3000/api/gruas/solicitudes/AQUI_ID_DE_LA_ASISTENCIA/assign
+Body (JSON):
+{
+    "gruaId": "AQUI_ID_DE_LA_GRUA_DISPONIBLE"
+}
+
+> Rechazar Solicitud (POST)
+URL: http://localhost:3000/api/gruas/solicitudes/AQUI_ID_DE_LA_ASISTENCIA/reject
+Body: (Ninguno o vacío {})
+
+
+---
+3. ASISTENCIAS (Historial y Gestión)
+---
+
+> Listar Todas (GET)
+URL: http://localhost:3000/api/asistencias
+Body: (Ninguno)
+
+> Búsqueda Exacta Global (GET)
+URL: http://localhost:3000/api/asistencias/search?query=TKT-001
+Body: (Ninguno)
+(Puedes reemplazar 'TKT-001' por una placa o nombre exacto guardado en Firestore)
+
+> Filtrar Avanzado (GET)
+URL: http://localhost:3000/api/asistencias/filter?estado=Completado&tipoSiniestro=Falla%20mecánica
+Body: (Ninguno)
+
+> Exportar Recibo PDF (GET)
+URL: http://localhost:3000/api/asistencias/AQUI_ID_DE_LA_ASISTENCIA/export
+Body: (Ninguno - Esto descargará el archivo .pdf directo)
+
+> Enviar Recibo al Cliente (POST)
+URL: http://localhost:3000/api/asistencias/AQUI_ID_DE_LA_ASISTENCIA/send-receipt
+Body: (Ninguno o vacío {})
+
+
+---
+4. CLIENTES
+---
+
+> Listar Todos los Clientes (GET)
+URL: http://localhost:3000/api/clientes
+Body: (Ninguno)
+
+> Detalle de un Cliente (GET)
+URL: http://localhost:3000/api/clientes/AQUI_ID_DEL_CLIENTE
+Body: (Ninguno)
