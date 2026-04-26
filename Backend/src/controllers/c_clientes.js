@@ -23,7 +23,29 @@ const detalleCliente = async (req, res) => {
     }
 };
 
+const listarClientesAgregados = async (req, res) => {
+    try {
+        const data = await clientesService.getAggregatedData();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const cambiarEstado = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_active } = req.body;
+        const result = await clientesService.toggleActive(id, is_active);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = {
     listarClientes,
-    detalleCliente
+    detalleCliente,
+    listarClientesAgregados,
+    cambiarEstado
 };

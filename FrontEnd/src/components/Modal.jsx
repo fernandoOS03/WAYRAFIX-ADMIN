@@ -1,52 +1,78 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
-import clsx from 'clsx';
 
-const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-2xl' }) => {
+const Modal = ({ isOpen, onClose, title, children, maxWidth = '500px' }) => {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '1rem'
+    }}>
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+      <div
         onClick={onClose}
+        style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(15, 23, 42, 0.3)',
+          backdropFilter: 'blur(4px)',
+        }}
       />
-      
-      {/* Modal */}
-      <div 
-        className={clsx(
-          "relative bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.15)] border border-white/50 w-full mx-4 flex flex-col max-h-[90vh] animate-in fade-in slide-in-from-bottom-8 zoom-in-95 duration-300",
-          maxWidth
-        )}
-      >
+
+      {/* Panel */}
+      <div style={{
+        position: 'relative',
+        background: '#fff',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--color-border)',
+        boxShadow: 'var(--shadow-lg)',
+        width: '100%',
+        maxWidth,
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+        animation: 'modalEnter 0.2s ease-out',
+      }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-8 pb-4">
-          <h3 className="text-2xl font-black text-gray-900 tracking-tight">{title}</h3>
-          <button 
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '1rem 1.5rem',
+          borderBottom: '1px solid var(--color-border)',
+        }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{title}</h3>
+          <button
             onClick={onClose}
-            className="p-2.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all bg-gray-50/50 border border-transparent shadow-sm hover:shadow"
+            style={{
+              padding: '0.25rem', borderRadius: '4px',
+              background: 'transparent', border: 'none',
+              cursor: 'pointer', color: 'var(--color-text-muted)',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--color-text-primary)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
           >
-            <X size={20} strokeWidth={2.5}/>
+            <X size={20} />
           </button>
         </div>
-        
+
         {/* Body */}
-        <div className="px-8 pb-8 overflow-y-auto">
+        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
           {children}
         </div>
       </div>
+
+      <style>{`
+        @keyframes modalEnter {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
     </div>
   );
 };

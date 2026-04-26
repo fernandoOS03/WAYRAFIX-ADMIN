@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Send, FileText, CreditCard, DollarSign } from 'lucide-react';
+import { Search, Send, DollarSign, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 const MOCK_FINANZAS = [
@@ -12,108 +12,105 @@ const MOCK_FINANZAS = [
 const Finanzas = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredFinanzas = MOCK_FINANZAS.filter(f => 
-    f.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredFinanzas = MOCK_FINANZAS.filter(f =>
+    f.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
     f.ticket.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEnviarBoleto = (ticket) => {
-    toast.success(`Boleto virtual de la orden ${ticket} enviado al cliente por email/SMS con éxito.`, {
-      icon: '📩',
-      style: {
-        borderRadius: '16px',
-        background: '#333',
-        color: '#fff',
-      },
-    });
+    toast.success(`Boleto ${ticket} enviado.`);
   };
 
   return (
-    <div className="space-y-8 p-8 shrink-0 max-w-7xl mx-auto min-h-screen">
+    <div className="page-wrapper" style={{ padding: '2rem' }}>
       <Toaster position="bottom-right" />
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+      
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '0.25rem' }}>Resumen Financiero</h1>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>Seguimiento de ingresos y facturación de servicios.</p>
+      </div>
+
+      {/* Metrics Row (Minimalist boxes) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Ingresos Brutos</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 700 }}>$480.00</h2>
+            <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+              <ArrowUpRight size={14} /> +12%
+            </span>
+          </div>
+        </div>
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Servicios Pagados</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 700 }}>124</h2>
+            <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+               <ArrowUpRight size={14} /> +5%
+            </span>
+          </div>
+        </div>
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Pendientes de Cobro</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 700 }}>$45.00</h2>
+            <span style={{ fontSize: '12px', color: 'var(--color-danger)', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+               <ArrowDownRight size={14} /> -2%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+        <div className="input-wrapper" style={{ flex: 1, maxWidth: '400px' }}>
+          <Search size={14} className="input-icon" />
+          <input
+            type="text"
+            className="input"
+            placeholder="Filtrar por cliente o ticket..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <button className="btn-ghost" style={{ fontSize: '12px' }}>Período Actual</button>
+      </div>
+
+      {/* Simple List (Mapbox style) */}
+      <div className="table-container">
+        <div className="table-header" style={{ padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ flex: 1 }}>Servicio / Cliente</span>
+          <span style={{ width: '120px', textAlign: 'center' }}>Monto</span>
+          <span style={{ width: '120px', textAlign: 'center' }}>Estado</span>
+          <span style={{ width: '120px', textAlign: 'right' }}>Acciones</span>
+        </div>
         <div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">Reporte Financiero</h2>
-          <p className="text-sm font-medium text-gray-500 mt-1">Gestión de recaudación y boletos de servicios realizados</p>
-        </div>
-        
-        {/* Metric Cards Top */}
-        <div className="flex gap-4">
-          <div className="bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500">
-              <DollarSign size={20} strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Ingresos Mes</p>
-              <h4 className="text-xl font-black text-gray-900">$480.00</h4>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-50 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto flex-1">
-          <div className="relative w-full md:w-80">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-4 py-2.5 border-none rounded-xl focus:ring-2 focus:ring-accent-dark/50 text-sm bg-gray-50/50 shadow-inner transition-shadow placeholder:text-gray-400 font-medium"
-              placeholder="Buscar por cliente o ticket..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Modern List Grid for Finances */}
-      <div className="space-y-4">
-        {filteredFinanzas.map(servicio => (
-          <div key={servicio.id} className="bg-white rounded-[2rem] p-6 px-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-gray-50 flex flex-col md:flex-row gap-6 md:items-center justify-between hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all group">
-            
-            <div className="flex items-center gap-6 flex-1">
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 shadow-inner">
-                <FileText size={24} strokeWidth={1.5} />
+          {filteredFinanzas.map(item => (
+            <div key={item.id} className="table-row" style={{ padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: '13px' }}>{item.cliente}</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{item.ticket} · {item.servicio}</div>
               </div>
-              
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-lg font-black text-gray-900">{servicio.cliente}</h3>
-                  <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-widest">{servicio.ticket}</span>
-                </div>
-                <div className="text-sm font-medium text-gray-500">
-                  {servicio.fecha} • {servicio.servicio}
-                </div>
+              <div style={{ width: '120px', textAlign: 'center', fontWeight: 700, fontSize: '14px' }}>
+                ${item.monto.toFixed(2)}
+              </div>
+              <div style={{ width: '120px', textAlign: 'center' }}>
+                <span className={`badge badge-${item.estado === 'Completado' ? 'success' : 'warning'}`} style={{ fontSize: '9px' }}>
+                  {item.estado}
+                </span>
+              </div>
+              <div style={{ width: '120px', textAlign: 'right' }}>
+                <button 
+                  onClick={() => handleEnviarBoleto(item.ticket)}
+                  className="btn-ghost" 
+                  style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}
+                >
+                  <Send size={12} style={{ marginRight: '4px' }} /> Enviar
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center gap-8 justify-between md:justify-end">
-              <div className="text-right">
-                <h4 className="text-2xl font-black text-gray-900">${servicio.monto.toFixed(2)}</h4>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{servicio.estado}</p>
-              </div>
-
-              <button 
-                onClick={() => handleEnviarBoleto(servicio.ticket)}
-                className="flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-2xl font-bold text-sm tracking-wide shadow-md hover:bg-primary transition-all active:scale-95 group-hover:scale-105"
-              >
-                <Send size={16} />
-                <span>Enviar Boleto</span>
-              </button>
-            </div>
-
-          </div>
-        ))}
-
-        {filteredFinanzas.length === 0 && (
-          <div className="text-center py-16 text-gray-400 font-medium font-lg">
-            No se encontraron servicios facturados.
-          </div>
-        )}
+          ))}
+        </div>
       </div>
-
     </div>
   );
 };

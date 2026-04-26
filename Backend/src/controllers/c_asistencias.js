@@ -73,10 +73,44 @@ const enviarRecibo = async (req, res) => {
     }
 };
 
+const crearAlertaSOS = async (req, res) => {
+    try {
+        const result = await asistenciasService.crearSOS(req.body);
+        res.status(201).json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const rechazarSolicitud = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { motivo_rechazo } = req.body;
+        const result = await asistenciasService.rechazarSolicitud(id, motivo_rechazo);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const actualizarEstado = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { estado } = req.body;
+        const result = await asistenciasService.actualizarEstado(id, estado);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = {
     listarHistorial,
     buscarGlobal,
     filtrarAsistencias,
     exportarPDF,
-    enviarRecibo
+    enviarRecibo,
+    crearAlertaSOS,
+    rechazarSolicitud,
+    actualizarEstado
 };

@@ -7,8 +7,21 @@ const AdminLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div style={{
+        minHeight: '100vh',
+        background: 'var(--color-background)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          width: '2rem',
+          height: '2rem',
+          border: '2px solid var(--color-primary)',
+          borderTopColor: 'transparent',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
       </div>
     );
   }
@@ -17,14 +30,28 @@ const AdminLayout = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // The main takes the full height of the screen minus the layout. 
-  // It relies on child views to set padding if they want it.
   return (
-    <div className="min-h-screen bg-background flex overflow-hidden">
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--color-background)',
+      display: 'flex',
+      overflow: 'hidden',
+    }}>
       <Sidebar />
-      <main className="flex-1 ml-64 h-screen bg-background relative overflow-y-auto">
+      <main style={{
+        flex: 1,
+        marginLeft: '240px',
+        height: '100vh',
+        overflowY: 'auto',
+        position: 'relative',
+        background: '#f9fafb'
+      }}>
         <Outlet />
       </main>
+      
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 };

@@ -1,126 +1,145 @@
-import { useState } from 'react';
-import { Search, Filter, Download, Calendar, MapPin } from 'lucide-react';
-
-const mockHistorial = [
-  { id: 1, ticket: 'TKT-001', cliente: 'Juan Pérez', placa: 'ABC-123', fecha: '10/04/2026', tipo: 'Falla Mecánica', estado: 'COMPLETADO' },
-  { id: 2, ticket: 'TKT-002', cliente: 'María Gómez', placa: 'XYZ-987', fecha: '10/04/2026', tipo: 'Accidente', estado: 'EN CURSO' },
-  { id: 3, ticket: 'TKT-003', cliente: 'Carlos Ruiz', placa: 'LMN-456', fecha: '09/04/2026', tipo: 'Neumático', estado: 'COMPLETADO' },
-  { id: 4, ticket: 'TKT-004', cliente: 'Ana Silva', placa: 'QWE-444', fecha: '08/04/2026', tipo: 'Batería', estado: 'CANCELADO' },
-];
+import { useState, useEffect } from 'react';
+import { Search, Filter, Download, Calendar, ExternalLink } from 'lucide-react';
+import asistenciasService from '../services/asistenciasService';
 
 const Historial = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState('');
+  const [historial, setHistorial] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredData = mockHistorial.filter(item => {
-    const matchesSearch = item.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.ticket.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          item.placa.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTipo = filterTipo ? item.tipo === filterTipo : true;
+  useEffect(() => {
+    fetchHistorial();
+  }, []);
+
+  const fetchHistorial = async () => {
+    try {
+      setLoading(true);
+      const data = await asistenciasService.getAll();
+      setHistorial(data);
+    } catch (error) {
+      console.error("Error fetching historial:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredData = historial.filter(item => {
+    const clienteNombre = item.cliente?.nombre || item.cliente || '';
+    const vehiculoPlaca = item.vehiculo?.placa || item.placa || '';
+    
+    const matchesSearch =
+      clienteNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.ticket || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vehiculoPlaca.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesTipo = filterTipo ? (item.tipoSiniestro || item.tipo) === filterTipo : true;
     return matchesSearch && matchesTipo;
   });
 
   return (
-    <div className="space-y-8 p-8 shrink-0 max-w-7xl mx-auto min-h-screen">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+    <div className="page-wrapper" style={{ padding: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
         <div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">Historial de Asistencias</h2>
-          <p className="text-sm font-medium text-gray-500 mt-1">Consulta y exporta el registro de servicios pasados</p>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '0.25rem' }}>Historial de Asistencias</h1>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>Registro detallado de todos los servicios realizados.</p>
         </div>
-      </div>
-
-      {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-50 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto flex-1">
-          <div className="relative w-full md:w-80">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-4 py-2.5 border-none rounded-xl focus:ring-2 focus:ring-accent-dark/50 text-sm bg-gray-50/50 shadow-inner transition-shadow placeholder:text-gray-400 font-medium"
-              placeholder="Buscar por cliente, placa o ticket..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="relative w-full md:w-56">
-             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Filter className="h-4 w-4 text-gray-400" />
-            </div>
-            <select
-              className="block w-full pl-10 pr-8 py-2.5 border-none rounded-xl focus:ring-2 focus:ring-accent-dark/50 text-sm bg-gray-50/50 text-gray-700 font-medium appearance-none transition-shadow"
-              value={filterTipo}
-              onChange={(e) => setFilterTipo(e.target.value)}
-            >
-              <option value="">Todos los siniestros</option>
-              <option value="Falla Mecánica">Falla Mecánica</option>
-              <option value="Accidente">Accidente</option>
-              <option value="Neumático">Neumático</option>
-              <option value="Batería">Batería</option>
-            </select>
-          </div>
-        </div>
-
-        <button className="flex items-center justify-center w-full md:w-auto gap-2 px-6 py-3.5 bg-gray-900 text-white hover:bg-primary rounded-2xl text-sm font-bold tracking-wide transition-all shadow-md active:scale-95">
-          <Download size={16} /> Exportar CSV
+        <button className="btn-primary" style={{ gap: '0.5rem' }}>
+          <Download size={14} />
+          Exportar Datos
         </button>
       </div>
 
-      {/* Table Minimalist */}
-      <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-50 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600">
-            <thead className="bg-white text-gray-400 text-[10px] uppercase tracking-widest font-bold border-b border-gray-100">
+      {/* Filters Bar */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="input-wrapper" style={{ flex: 1, maxWidth: '400px' }}>
+          <Search size={14} className="input-icon" />
+          <input
+            type="text"
+            className="input"
+            placeholder="Buscar por cliente, placa o ticket..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="input-wrapper" style={{ width: '200px' }}>
+          <Filter size={14} className="input-icon" />
+          <select
+            className="input"
+            style={{ paddingLeft: '2.5rem', appearance: 'none' }}
+            value={filterTipo}
+            onChange={e => setFilterTipo(e.target.value)}
+          >
+            <option value="">Todos los tipos</option>
+            <option value="Falla Mecánica">Falla Mecánica</option>
+            <option value="Accidente">Accidente</option>
+            <option value="Neumático">Neumático</option>
+            <option value="Batería">Batería</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Minimalist Table */}
+      <div className="table-container">
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead className="table-header">
+            <tr>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left' }}>Ticket / Fecha</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left' }}>Cliente / Vehículo</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left' }}>Servicio</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left' }}>Estado</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
               <tr>
-                <th className="px-6 py-4">Servicio</th>
-                <th className="px-6 py-4">Cliente / Vehículo</th>
-                <th className="px-6 py-4">Siniestro</th>
-                <th className="px-6 py-4">Estado</th>
-                <th className="px-6 py-4 text-right">Detalles</th>
+                <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  Cargando asistencias...
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredData.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50/50 transition-colors group border-b border-gray-50 last:border-0">
-                  <td className="px-6 py-5 whitespace-nowrap">
-                    <div className="font-bold text-gray-900 text-base mb-0.5">{item.ticket}</div>
-                    <div className="text-[11px] font-medium text-gray-500 flex items-center gap-1.5 uppercase tracking-wider">
-                      <Calendar size={12} className="text-gray-400" /> {item.fecha}
+            ) : filteredData.length === 0 ? (
+              <tr>
+                <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  No se encontraron asistencias.
+                </td>
+              </tr>
+            ) : (
+              filteredData.map(item => (
+                <tr key={item.id} className="table-row">
+                  <td style={{ padding: '1rem' }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px' }}>{item.ticket || 'S/N'}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Calendar size={12} /> {item.fechaCorta || item.fecha || 'N/A'}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-gray-800">{item.cliente}</div>
-                    <div className="text-xs text-gray-500 font-mono mt-0.5">{item.placa}</div>
+                  <td style={{ padding: '1rem' }}>
+                    <div style={{ fontWeight: 500, fontSize: '13px' }}>{item.cliente?.nombre || item.cliente || 'Anónimo'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                      {item.vehiculo?.placa || item.placa || 'Sin placa'}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-700">{item.tipo}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase ${
-                      item.estado === 'COMPLETADO' ? 'bg-gray-100 text-gray-600' :
-                      item.estado === 'EN CURSO' ? 'bg-primary/10 text-primary' :
-                      'bg-red-50 text-red-600'
-                    }`}>
-                      {item.estado}
+                  <td style={{ padding: '1rem', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                    {item.tipoSiniestro || item.tipo || 'General'}
+                  </td>
+                  <td style={{ padding: '1rem' }}>
+                    <span className={`badge badge-${
+                      (item.estado || '').toLowerCase() === 'finalizado' ? 'success' : 
+                      ['pendiente', 'en_camino'].includes((item.estado || '').toLowerCase()) ? 'warning' : 'danger'
+                    }`} style={{ fontSize: '10px', textTransform: 'uppercase' }}>
+                      {item.estado || 'DESCONOCIDO'}
                     </span>
                   </td>
-                  <td className="px-6 py-5 text-right">
-                    <button className="text-gray-400 hover:text-accent-dark font-bold text-[11px] uppercase tracking-widest transition-colors py-2 px-3 hover:bg-gray-50 rounded-lg">
-                      Ver Ficha
+                  <td style={{ padding: '1rem', textAlign: 'right' }}>
+                    <button className="btn-ghost" style={{ padding: '0.4rem', borderRadius: '4px', minWidth: 'unset' }}>
+                      <ExternalLink size={14} />
                     </button>
                   </td>
                 </tr>
-              ))}
-              {filteredData.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
-                    No se encontraron registros.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

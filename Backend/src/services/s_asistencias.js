@@ -1,5 +1,9 @@
-const { db } = require('../config/firebase');
-const { Filter } = require('firebase-admin/firestore');
+const { db, messaging, admin } = require('../config/firebase');
+const { Filter, Timestamp } = require('firebase-admin/firestore');
+const { getDistance } = require('../utils/geo');
+const { BASES_GRUAS } = require('../config/bases');
+const socketConfig = require('../config/socket');
+const notificacionesService = require('./s_notificaciones');
 
 const collectionName = 'asistencias';
 
@@ -49,9 +53,141 @@ const filterAdvanced = async ({ fecha, tipoSiniestro, estado }) => {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
+const crearSOS = async (sosData) => {
+    const { uid_usuario, latitud, longitud, nombre_cliente, vehiculo_id, tipo_siniestro } = sosData;
+
+    // 1. Algoritmo de Asignación (Cercanía)
+    let masCercana = null;
+    let distanciaMinima = Infinity;
+
+    BASES_GRUAS.forEach(base => {
+        const dist = getDistance(latitud, longitud, base.latitud, base.longitud);
+        if (dist < distanciaMinima) {
+            distanciaMinima = dist;
+            masCercana = base;
+        }
+    });
+
+    const id_servicio = `SERV-${Date.now()}`;
+    const ticket = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const nuevaAsistencia = {
+        id_servicio,
+        ticket,
+        uid_usuario,
+        cliente: {
+            nombre: nombre_cliente
+        },
+        vehiculo: vehiculo_id, // { modelo, placa }
+        ubicacion: {
+            latitud,
+            longitud
+        },
+        tipoSiniestro: tipo_siniestro,
+        estado: 'pendiente',
+        createdAt: Timestamp.now(),
+        fechaCorta: new Date().toISOString().split('T')[0],
+        asignacion: {
+            id_grua: masCercana.grua_id,
+            nombre_grua: masCercana.nombre,
+            base_asignada: masCercana.id,
+            distancia_km: distanciaMinima.toFixed(2)
+        }
+    };
+
+    // Persistencia en Firestore
+    const docRef = await db.collection(collectionName).add(nuevaAsistencia);
+    
+    // Sincronización en Realtime Database para rastreo en vivo
+    const rtdbRef = admin.database().ref(`activos/${id_servicio}`);
+    await rtdbRef.set({
+        estado: 'pendiente',
+        ubicacion_grua: {
+            lat: masCercana.latitud,
+            lng: masCercana.longitud
+        },
+        cliente: nombre_cliente,
+        tipo: tipo_siniestro
+    });
+
+    // Notificar al Panel Admin via Socket.IO (para disparar sonido de alerta)
+    try {
+        const io = socketConfig.getIO();
+        io.emit('nuevaAlerta', {
+            id: docRef.id,
+            id_servicio,
+            cliente: nombre_cliente,
+            tipo: tipo_siniestro
+        });
+    } catch (e) {
+        console.error("Socket.io no disponible para emitir nuevaAlerta");
+    }
+
+    return {
+        id: docRef.id,
+        id_servicio,
+        nombre_grua: masCercana.nombre,
+        ubicacion_tiempo_real_grua: {
+            lat: masCercana.latitud,
+            lng: masCercana.longitud
+        }
+    };
+};
+
+const rechazarSolicitud = async (id, motivo) => {
+    const asistencia = await getById(id);
+    if (!asistencia) throw new Error("Asistencia no encontrada");
+
+    // Actualizar estado en Firestore
+    await db.collection(collectionName).doc(id).update({
+        estado: 'rechazado',
+        motivo_rechazo: motivo,
+        updatedAt: Timestamp.now()
+    });
+
+    // Actualizar en RTDB
+    await admin.database().ref(`activos/${asistencia.id_servicio}`).update({
+        estado: 'rechazado',
+        motivo_rechazo: motivo
+    });
+
+    // Disparar Notificación Push
+    if (asistencia.fcmToken) {
+        try {
+            await notificacionesService.enviarPush(asistencia.fcmToken, {
+                title: 'Solicitud Rechazada',
+                body: `Tu solicitud de asistencia fue rechazada: ${motivo}`
+            });
+        } catch (error) {
+            console.error("Error enviando push:", error);
+        }
+    }
+
+    return { success: true, message: "Solicitud rechazada y notificación enviada" };
+};
+
+const actualizarEstado = async (id, nuevoEstado) => {
+    const asistencia = await getById(id);
+    if (!asistencia) throw new Error("Asistencia no encontrada");
+
+    await db.collection(collectionName).doc(id).update({
+        estado: nuevoEstado,
+        updatedAt: Timestamp.now()
+    });
+
+    await admin.database().ref(`activos/${asistencia.id_servicio}`).update({
+        estado: nuevoEstado
+    });
+
+    return { success: true };
+};
+
 module.exports = {
     getAll,
     getById,
     searchExact,
-    filterAdvanced
+    filterAdvanced,
+    crearSOS,
+    rechazarSolicitud,
+    actualizarEstado
 };

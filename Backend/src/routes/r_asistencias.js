@@ -20,4 +20,13 @@ router.get('/:id/export', asistenciasCtrl.exportarPDF);
 // Enviar recibo
 router.post('/:id/send-receipt', asistenciasCtrl.enviarRecibo);
 
+// SOS Alerta
+router.post('/sos', asistenciasCtrl.crearAlertaSOS);
+
+// Rechazar solicitud
+router.post('/:id/reject', asistenciasCtrl.rechazarSolicitud);
+
+// Actualizar estado (pendiente, en_camino, finalizado, rechazado)
+router.patch('/:id/status', asistenciasCtrl.actualizarEstado);
+
 module.exports = router;
