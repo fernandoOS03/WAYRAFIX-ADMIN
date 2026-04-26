@@ -95,12 +95,15 @@ const crearSOS = async (sosData) => {
         }
     };
 
-    // Persistencia en Firestore
-    const docRef = await db.collection(collectionName).add(nuevaAsistencia);
+    // Medición de rendimiento
+    const start = Date.now();
+
+    // Persistencia concurrente en Firestore y Realtime Database
+    console.log(`[SOS] Iniciando guardado para servicio: ${id_servicio}`);
     
-    // Sincronización en Realtime Database para rastreo en vivo
+    const firestorePromise = db.collection(collectionName).add(nuevaAsistencia);
     const rtdbRef = admin.database().ref(`activos/${id_servicio}`);
-    await rtdbRef.set({
+    const rtdbPromise = rtdbRef.set({
         estado: 'pendiente',
         ubicacion_grua: {
             lat: masCercana.latitud,
@@ -110,7 +113,11 @@ const crearSOS = async (sosData) => {
         tipo: tipo_siniestro
     });
 
-    // Notificar al Panel Admin via Socket.IO (para disparar sonido de alerta)
+    const [docRef] = await Promise.all([firestorePromise, rtdbPromise]);
+    
+    console.log(`[SOS] Guardado completado en ${Date.now() - start}ms`);
+
+    // Notificar al Panel Admin via Socket.IO (No bloqueante para la respuesta al app)
     try {
         const io = socketConfig.getIO();
         io.emit('nuevaAlerta', {
@@ -119,8 +126,9 @@ const crearSOS = async (sosData) => {
             cliente: nombre_cliente,
             tipo: tipo_siniestro
         });
+        console.log(`[SOS] Alerta emitida vía Socket.IO`);
     } catch (e) {
-        console.error("Socket.io no disponible para emitir nuevaAlerta");
+        console.error("[SOS] Socket.io no disponible para emitir nuevaAlerta");
     }
 
     return {

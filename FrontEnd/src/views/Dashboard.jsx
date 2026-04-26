@@ -3,6 +3,8 @@ import { Search, Bell, ChevronRight, Zap } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import asistenciasService from '../services/asistenciasService';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 // Token de Mapbox desde variables de entorno
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -20,16 +22,15 @@ const Dashboard = () => {
   const craneMarker = useRef(null);
 
   useEffect(() => {
-    fetchRequests();
-    // Podríamos añadir un polling o socket aquí para tiempo real
-  }, []);
-
-  const fetchRequests = async () => {
-    try {
-      setLoading(true);
-      const data = await asistenciasService.getAll();
+    // Configurar listener en tiempo real de Firestore
+    const q = query(collection(db, 'asistencias'), orderBy('createdAt', 'desc'));
+    
+    setLoading(true);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
       // Filtrar solo las pendientes o en camino para el dashboard en vivo
-      const activeRequests = data
+      const activeRequests = allData
         .filter(req => ['pendiente', 'en_camino'].includes(req.estado))
         .map(req => ({
           ...req,
@@ -43,15 +44,19 @@ const Dashboard = () => {
         }));
       
       setRequests(activeRequests);
-      if (activeRequests.length > 0 && !selectedRequest) {
-        setSelectedRequest(activeRequests[0]);
-      }
-    } catch (error) {
-      console.error("Error fetching requests:", error);
-    } finally {
       setLoading(false);
-    }
-  };
+      
+      // Si hay una nueva solicitud y no hay ninguna seleccionada, seleccionar la primera
+      if (activeRequests.length > 0 && !selectedRequest) {
+        // Podríamos disparar un sonido aquí si quisiéramos
+      }
+    }, (error) => {
+      console.error("Error en el listener de Firestore:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [selectedRequest]);
 
   const filteredRequests = requests.filter(req =>
     req.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
