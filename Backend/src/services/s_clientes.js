@@ -13,7 +13,25 @@ const getAll = async () => {
 const getById = async (id) => {
     const doc = await db.collection(collectionName).doc(id).get();
     if (!doc.exists) return null;
-    return { id: doc.id, ...doc.data() };
+    
+    const clientData = doc.data();
+    
+    // Fetch vehicles from subcollection
+    const vehiclesSnapshot = await db.collection(collectionName)
+        .doc(id)
+        .collection('vehiculos')
+        .get();
+        
+    const userVehicles = vehiclesSnapshot.docs.map(vDoc => ({ 
+        id: vDoc.id, 
+        ...vDoc.data() 
+    }));
+
+    return { 
+        id: doc.id, 
+        ...clientData, 
+        vehiculos: userVehicles 
+    };
 };
 
 const getAggregatedData = async () => {
@@ -22,46 +40,30 @@ const getAggregatedData = async () => {
         .where('rol', '==', 'cliente')
         .limit(100)
         .get();
-    // Obtenemos todos los vehículos
-    const vehiclesSnapshot = await db.collection('vehiculos').get();
 
-    const vehiclesMap = {};
-    const vehiclesByClientId = {};
-
-    vehiclesSnapshot.forEach(doc => {
-        const data = { id: doc.id, ...doc.data() };
-        // Usamos VIN y Placa como posibles llaves
-        if (data.vin) vehiclesMap[data.vin] = data;
-        if (data.placa) vehiclesMap[data.placa] = data;
-
-        // Agrupación por clientId si existe
-        if (data.clientId) {
-            if (!vehiclesByClientId[data.clientId]) vehiclesByClientId[data.clientId] = [];
-            vehiclesByClientId[data.clientId].push(data);
-        }
-    });
-
-    return clientsSnapshot.docs.map(doc => {
+    // Fetch vehicles for each user in parallel from their subcollection
+    const clientsWithVehicles = await Promise.all(clientsSnapshot.docs.map(async (doc) => {
         const clientData = doc.data();
         const clientId = doc.id;
-
-        // 1. Intentar por clientId directo
-        let userVehicles = vehiclesByClientId[clientId] || [];
-
-        // 2. Fallback por llaves en el doc cliente
-        if (userVehicles.length === 0) {
-            const key = clientData.vin || clientData.placa;
-            if (key && vehiclesMap[key]) {
-                userVehicles = [vehiclesMap[key]];
-            }
-        }
+        
+        const vehiclesSnapshot = await db.collection(collectionName)
+            .doc(clientId)
+            .collection('vehiculos')
+            .get();
+            
+        const userVehicles = vehiclesSnapshot.docs.map(vDoc => ({ 
+            id: vDoc.id, 
+            ...vDoc.data() 
+        }));
 
         return {
             id: clientId,
             ...clientData,
             vehiculos: userVehicles
         };
-    });
+    }));
+
+    return clientsWithVehicles;
 };
 
 const toggleActive = async (id, isActive) => {
