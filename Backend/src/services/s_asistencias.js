@@ -12,7 +12,16 @@ const getAll = async () => {
         .orderBy('fecha_creacion', 'desc')
         .limit(50)
         .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id, 
+            ...data,
+            // Mapeo para compatibilidad con Dashboard
+            cliente: { nombre: data.nombre_cliente || 'Sin Nombre' },
+            tipoSiniestro: data.tipo_siniestro || 'Otros'
+        };
+    });
 };
 
 const getById = async (id) => {
@@ -80,7 +89,7 @@ const crearSOS = async (sosData) => {
         uid_usuario,
         nombre_cliente,
         celular,
-        vehiculo: vehiculo_id, // Objeto completo: { marca, modelo, placa, color, vin, transmision }
+        vehiculo: vehiculo_id, // Objeto completo del vehículo
         ubicacion: {
             latitud,
             longitud
@@ -94,7 +103,10 @@ const crearSOS = async (sosData) => {
             nombre_grua: masCercana.nombre,
             base_asignada: masCercana.id,
             distancia_km: distanciaMinima.toFixed(2)
-        }
+        },
+        // Inyectamos campos de compatibilidad para el Dashboard
+        cliente: { nombre: nombre_cliente },
+        tipoSiniestro: tipo_siniestro
     };
 
     // Medición de rendimiento
@@ -122,15 +134,13 @@ const crearSOS = async (sosData) => {
     // Notificar al Panel Admin via Socket.IO (No bloqueante para la respuesta al app)
     try {
         const io = socketConfig.getIO();
-        io.emit('nuevaAlerta', {
+        io.emit('newAsistencia', {
             id: docRef.id,
-            id_servicio,
-            cliente: nombre_cliente,
-            tipo: tipo_siniestro
+            ...nuevaAsistencia
         });
-        console.log(`[SOS] Alerta emitida vía Socket.IO`);
+        console.log(`[SOS] Alerta emitida vía Socket.IO (newAsistencia)`);
     } catch (e) {
-        console.error("[SOS] Socket.io no disponible para emitir nuevaAlerta");
+        console.error("[SOS] Socket.io no disponible para emitir newAsistencia");
     }
 
     return {
