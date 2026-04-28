@@ -16,6 +16,7 @@ const authRoutes = require('./src/routes/r_auth');
 const asistenciasRoutes = require('./src/routes/r_asistencias');
 const clientesRoutes = require('./src/routes/r_clientes');
 const gruasRoutes = require('./src/routes/r_gruas');
+const asistenciasListener = require('./src/services/s_asistenciasListener');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
@@ -28,6 +29,9 @@ const server = http.createServer(app);
 
 // Inicializar Socket.IO
 socketConfig.init(server);
+
+// Iniciar Listeners de Firestore
+asistenciasListener.startListener();
 
 server.listen(PORT, () => {
     console.log(`WayraFix corriendo en el puerto: ${PORT}`);

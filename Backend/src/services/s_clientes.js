@@ -3,7 +3,10 @@ const { db } = require('../config/firebase');
 const collectionName = 'usuarios';
 
 const getAll = async () => {
-    const snapshot = await db.collection(collectionName).get();
+    const snapshot = await db.collection(collectionName)
+        .where('rol', '==', 'cliente')
+        .limit(100)
+        .get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
@@ -14,8 +17,11 @@ const getById = async (id) => {
 };
 
 const getAggregatedData = async () => {
-    // Obtenemos todos los clientes/usuarios
-    const clientsSnapshot = await db.collection(collectionName).get();
+    // Obtenemos todos los usuarios con rol cliente (límite 100 para rendimiento)
+    const clientsSnapshot = await db.collection(collectionName)
+        .where('rol', '==', 'cliente')
+        .limit(100)
+        .get();
     // Obtenemos todos los vehículos
     const vehiclesSnapshot = await db.collection('vehiculos').get();
 

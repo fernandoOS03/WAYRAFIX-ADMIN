@@ -8,7 +8,10 @@ const notificacionesService = require('./s_notificaciones');
 const collectionName = 'asistencias';
 
 const getAll = async () => {
-    const snapshot = await db.collection(collectionName).orderBy('createdAt', 'desc').get();
+    const snapshot = await db.collection(collectionName)
+        .orderBy('fecha_creacion', 'desc')
+        .limit(50)
+        .get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
@@ -26,7 +29,7 @@ const searchExact = async (queryTerm) => {
     // Asumiremos las propiedades: cliente.nombre, vehiculo.placa, ticket
     const snapshot = await ref.where(
         Filter.or(
-            Filter.where('cliente.nombre', '==', queryTerm),
+            Filter.where('nombre_cliente', '==', queryTerm),
             Filter.where('vehiculo.placa', '==', queryTerm),
             Filter.where('ticket', '==', queryTerm)
         )
@@ -43,18 +46,18 @@ const filterAdvanced = async ({ fecha, tipoSiniestro, estado }) => {
         query = query.where('fechaCorta', '==', fecha);
     }
     if (tipoSiniestro) {
-        query = query.where('tipoSiniestro', '==', tipoSiniestro);
+        query = query.where('tipo_siniestro', '==', tipoSiniestro);
     }
     if (estado) {
         query = query.where('estado', '==', estado);
     }
 
-    const snapshot = await query.get();
+    const snapshot = await query.limit(50).get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 const crearSOS = async (sosData) => {
-    const { uid_usuario, latitud, longitud, nombre_cliente, vehiculo_id, tipo_siniestro } = sosData;
+    const { uid_usuario, latitud, longitud, nombre_cliente, celular, vehiculo_id, tipo_siniestro } = sosData;
 
     // 1. Algoritmo de Asignación (Cercanía)
     let masCercana = null;
@@ -75,17 +78,16 @@ const crearSOS = async (sosData) => {
         id_servicio,
         ticket,
         uid_usuario,
-        cliente: {
-            nombre: nombre_cliente
-        },
-        vehiculo: vehiculo_id, // { modelo, placa }
+        nombre_cliente,
+        celular,
+        vehiculo: vehiculo_id, // Objeto completo: { marca, modelo, placa, color, vin, transmision }
         ubicacion: {
             latitud,
             longitud
         },
-        tipoSiniestro: tipo_siniestro,
+        tipo_siniestro: tipo_siniestro,
         estado: 'pendiente',
-        createdAt: Timestamp.now(),
+        fecha_creacion: Timestamp.now(),
         fechaCorta: new Date().toISOString().split('T')[0],
         asignacion: {
             id_grua: masCercana.grua_id,
