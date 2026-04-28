@@ -7,7 +7,32 @@ const getAll = async () => {
         .where('rol', '==', 'cliente')
         .limit(100)
         .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Traer vehículos para cada usuario en la lista general
+    const clientsWithVehicles = await Promise.all(snapshot.docs.map(async (doc) => {
+        const clientData = doc.data();
+        const clientId = doc.id;
+        
+        const vehiclesSnapshot = await db.collection(collectionName)
+            .doc(clientId)
+            .collection('vehiculos')
+            .get();
+            
+        const userVehicles = vehiclesSnapshot.docs.map(vDoc => ({ 
+            id: vDoc.id, 
+            ...vDoc.data() 
+        }));
+
+        return {
+            id: clientId,
+            ...clientData,
+            vehiculos: userVehicles,
+            vehicles: userVehicles,
+            vehiculos_count: userVehicles.length
+        };
+    }));
+
+    return clientsWithVehicles;
 };
 
 const getById = async (id) => {
