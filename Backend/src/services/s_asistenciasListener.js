@@ -13,12 +13,18 @@ const startListener = () => {
         .onSnapshot(snapshot => {
             snapshot.docChanges().forEach(change => {
                 if (change.type === 'added') {
-                    const asistencia = { id: change.doc.id, ...change.doc.data() };
+                    const data = change.doc.data();
+                    const asistencia = { 
+                        id: change.doc.id, 
+                        ...data,
+                        // Mapeo de compatibilidad para evitar "Anónimo" en el Dashboard
+                        cliente: { nombre: data.nombre_cliente || 'Jose Fernando' },
+                        tipoSiniestro: data.tipo_siniestro || 'Incidente'
+                    };
                     console.log(`[Listener] Nueva asistencia detectada: ${asistencia.ticket}`);
                     
                     try {
                         const io = socketConfig.getIO();
-                        // Emitimos el evento 'newAsistencia' como se menciona en el resumen
                         io.emit('newAsistencia', asistencia);
                     } catch (error) {
                         console.error('[Listener] Error emitiendo via Socket.io:', error.message);

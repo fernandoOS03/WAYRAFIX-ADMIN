@@ -181,6 +181,14 @@ const rechazarSolicitud = async (id, motivo) => {
         }
     }
 
+    // Notificar al Dashboard en tiempo real
+    try {
+        const io = socketConfig.getIO();
+        io.emit('asistenciaUpdated', { id, estado: 'rechazado', motivo_rechazo: motivo });
+    } catch (e) {
+        console.error("Error emitiendo asistenciaUpdated (rechazo)");
+    }
+
     return { success: true, message: "Solicitud rechazada y notificación enviada" };
 };
 
@@ -196,6 +204,14 @@ const actualizarEstado = async (id, nuevoEstado) => {
     await admin.database().ref(`activos/${asistencia.id_servicio}`).update({
         estado: nuevoEstado
     });
+
+    // Notificar al Dashboard en tiempo real
+    try {
+        const io = socketConfig.getIO();
+        io.emit('asistenciaUpdated', { id, estado: nuevoEstado });
+    } catch (e) {
+        console.error("Error emitiendo asistenciaUpdated (actualización)");
+    }
 
     return { success: true };
 };
