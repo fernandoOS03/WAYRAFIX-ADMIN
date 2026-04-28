@@ -4,6 +4,7 @@ const { getDistance } = require('../utils/geo');
 const { BASES_GRUAS } = require('../config/bases');
 const socketConfig = require('../config/socket');
 const notificacionesService = require('./s_notificaciones');
+const gruasService = require('./s_gruas');
 
 const collectionName = 'asistencias';
 
@@ -66,27 +67,34 @@ const filterAdvanced = async ({ fecha, tipoSiniestro, estado }) => {
 };
 
 const crearSOS = async (sosData) => {
-    const { uid_usuario, latitud, longitud, nombre_cliente, celular, vehiculo_id, tipo_siniestro } = sosData;
+    const { uid_usuario, latitud, longitud, nombre_cliente, celular, vehiculo_id, tipo_siniestro, fcmToken } = sosData;
 
-    // 1. Algoritmo de Asignación (Cercanía)
+    // 1. Obtener grúas reales disponibles desde la DB (No hardcoded)
+    const gruasDisponibles = await gruasService.getAvailables();
+    
     let masCercana = null;
     let distanciaMinima = Infinity;
-    const MAX_DISTANCIA_KM = 50; // Límite para considerar una grúa "disponible"
+    const MAX_DISTANCIA_KM = 100; // Radio de búsqueda ampliado o configurable
 
-    BASES_GRUAS.forEach(base => {
-        const dist = getDistance(latitud, longitud, base.latitud, base.longitud);
-        if (dist < distanciaMinima) {
-            distanciaMinima = dist;
-            masCercana = base;
+    gruasDisponibles.forEach(grua => {
+        // Asumiendo que la grúa tiene ubicacion.latitud y ubicacion.longitud
+        const latGrua = grua.ubicacion?.latitud || grua.latitud;
+        const lngGrua = grua.ubicacion?.longitud || grua.longitud;
+
+        if (latGrua && lngGrua) {
+            const dist = getDistance(latitud, longitud, latGrua, lngGrua);
+            if (dist < distanciaMinima) {
+                distanciaMinima = dist;
+                masCercana = grua;
+            }
         }
     });
 
-    // Validar si encontramos una grúa dentro del rango aceptable
+    // Validar disponibilidad real
     if (!masCercana || distanciaMinima > MAX_DISTANCIA_KM) {
-        console.warn(`[SOS] No se encontraron grúas en el rango para ${nombre_cliente} (${distanciaMinima.toFixed(2)} km)`);
         return {
             success: false,
-            error: "Lo sentimos, no hay unidades disponibles cerca de tu ubicación en este momento.",
+            error: "No se encontraron grúas disponibles en su zona.",
             codigo: "NO_GRUA_DISPONIBLE"
         };
     }
@@ -100,7 +108,8 @@ const crearSOS = async (sosData) => {
         uid_usuario,
         nombre_cliente,
         celular,
-        vehiculo: vehiculo_id, // Objeto completo del vehículo
+        fcmToken: fcmToken || null, // Guardamos el token que viene de la app
+        vehiculo: vehiculo_id, 
         ubicacion: {
             latitud,
             longitud
@@ -110,24 +119,27 @@ const crearSOS = async (sosData) => {
         fecha_creacion: Timestamp.now(),
         fechaCorta: new Date().toISOString().split('T')[0],
         asignacion: {
-            id_grua: masCercana.grua_id,
-            nombre_grua: masCercana.nombre,
-            base_asignada: masCercana.id,
+            id_grua: masCercana.id,
+            nombre_grua: masCercana.nombre || masCercana.conductor,
             distancia_km: distanciaMinima.toFixed(2)
         },
         cliente: { nombre: nombre_cliente },
         tipoSiniestro: tipo_siniestro
     };
 
-    console.log(`[SOS] Asignando grúa: ${masCercana.nombre} a ${distanciaMinima.toFixed(2)} km`);
+    console.log(`[SOS] Asignando grúa real: ${nuevaAsistencia.asignacion.nombre_grua}`);
 
     const firestorePromise = db.collection(collectionName).add(nuevaAsistencia);
     const rtdbRef = admin.database().ref(`activos/${id_servicio}`);
+    
+    const initialLatGrua = masCercana.ubicacion?.latitud || masCercana.latitud;
+    const initialLngGrua = masCercana.ubicacion?.longitud || masCercana.longitud;
+
     const rtdbPromise = rtdbRef.set({
         estado: 'pendiente',
         ubicacion_grua: {
-            lat: masCercana.latitud,
-            lng: masCercana.longitud
+            lat: initialLatGrua,
+            lng: initialLngGrua
         },
         cliente: nombre_cliente,
         tipo: tipo_siniestro
@@ -135,25 +147,21 @@ const crearSOS = async (sosData) => {
 
     const [docRef] = await Promise.all([firestorePromise, rtdbPromise]);
 
-    // Notificar al Panel Admin via Socket.IO
     try {
         const io = socketConfig.getIO();
-        io.emit('newAsistencia', {
-            id: docRef.id,
-            ...nuevaAsistencia
-        });
+        io.emit('newAsistencia', { id: docRef.id, ...nuevaAsistencia });
     } catch (e) {
-        console.error("[SOS] Socket.io no disponible");
+        console.error("[SOS] Error al emitir socket event");
     }
 
     return {
         success: true,
         id: docRef.id,
         id_servicio,
-        nombre_grua: masCercana.nombre,
+        nombre_grua: nuevaAsistencia.asignacion.nombre_grua,
         ubicacion_tiempo_real_grua: {
-            lat: masCercana.latitud,
-            lng: masCercana.longitud
+            lat: initialLatGrua,
+            lng: initialLngGrua
         }
     };
 };
