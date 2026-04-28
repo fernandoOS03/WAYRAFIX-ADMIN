@@ -71,6 +71,7 @@ const crearSOS = async (sosData) => {
     // 1. Algoritmo de Asignación (Cercanía)
     let masCercana = null;
     let distanciaMinima = Infinity;
+    const MAX_DISTANCIA_KM = 50; // Límite para considerar una grúa "disponible"
 
     BASES_GRUAS.forEach(base => {
         const dist = getDistance(latitud, longitud, base.latitud, base.longitud);
@@ -79,6 +80,16 @@ const crearSOS = async (sosData) => {
             masCercana = base;
         }
     });
+
+    // Validar si encontramos una grúa dentro del rango aceptable
+    if (!masCercana || distanciaMinima > MAX_DISTANCIA_KM) {
+        console.warn(`[SOS] No se encontraron grúas en el rango para ${nombre_cliente} (${distanciaMinima.toFixed(2)} km)`);
+        return {
+            success: false,
+            error: "Lo sentimos, no hay unidades disponibles cerca de tu ubicación en este momento.",
+            codigo: "NO_GRUA_DISPONIBLE"
+        };
+    }
 
     const id_servicio = `SERV-${Date.now()}`;
     const ticket = Math.floor(100000 + Math.random() * 900000).toString();
@@ -104,17 +115,12 @@ const crearSOS = async (sosData) => {
             base_asignada: masCercana.id,
             distancia_km: distanciaMinima.toFixed(2)
         },
-        // Inyectamos campos de compatibilidad para el Dashboard
         cliente: { nombre: nombre_cliente },
         tipoSiniestro: tipo_siniestro
     };
 
-    // Medición de rendimiento
-    const start = Date.now();
+    console.log(`[SOS] Asignando grúa: ${masCercana.nombre} a ${distanciaMinima.toFixed(2)} km`);
 
-    // Persistencia concurrente en Firestore y Realtime Database
-    console.log(`[SOS] Iniciando guardado para servicio: ${id_servicio}`);
-    
     const firestorePromise = db.collection(collectionName).add(nuevaAsistencia);
     const rtdbRef = admin.database().ref(`activos/${id_servicio}`);
     const rtdbPromise = rtdbRef.set({
@@ -128,22 +134,20 @@ const crearSOS = async (sosData) => {
     });
 
     const [docRef] = await Promise.all([firestorePromise, rtdbPromise]);
-    
-    console.log(`[SOS] Guardado completado en ${Date.now() - start}ms`);
 
-    // Notificar al Panel Admin via Socket.IO (No bloqueante para la respuesta al app)
+    // Notificar al Panel Admin via Socket.IO
     try {
         const io = socketConfig.getIO();
         io.emit('newAsistencia', {
             id: docRef.id,
             ...nuevaAsistencia
         });
-        console.log(`[SOS] Alerta emitida vía Socket.IO (newAsistencia)`);
     } catch (e) {
-        console.error("[SOS] Socket.io no disponible para emitir newAsistencia");
+        console.error("[SOS] Socket.io no disponible");
     }
 
     return {
+        success: true,
         id: docRef.id,
         id_servicio,
         nombre_grua: masCercana.nombre,
