@@ -30,7 +30,9 @@ const getById = async (id) => {
     return { 
         id: doc.id, 
         ...clientData, 
-        vehiculos: userVehicles 
+        vehiculos: userVehicles,
+        vehicles: userVehicles, // Compatibilidad si el Dashboard busca en inglés
+        vehiculos_count: userVehicles.length
     };
 };
 
@@ -59,7 +61,9 @@ const getAggregatedData = async () => {
         return {
             id: clientId,
             ...clientData,
-            vehiculos: userVehicles
+            vehiculos: userVehicles,
+            vehicles: userVehicles, // Compatibilidad si el Dashboard busca en inglés
+            vehiculos_count: userVehicles.length
         };
     }));
 
