@@ -25,14 +25,22 @@ app.use('/api/gruas', gruasRoutes);
 
 // Server start
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0'; // Necesario para Render
 const server = http.createServer(app);
 
 // Inicializar Socket.IO
 socketConfig.init(server);
 
 // Iniciar Listeners de Firestore
-asistenciasListener.startListener();
+try {
+    asistenciasListener.startListener();
+    console.log('Firestore Listener iniciado correctamente.');
+} catch (error) {
+    console.error('Error iniciando Firestore Listener:', error.message);
+}
 
-server.listen(PORT, () => {
-    console.log(`WayraFix corriendo en el puerto: ${PORT}`);
+server.listen(PORT, HOST, () => {
+    console.log(`WayraFix ONLINE`);
+    console.log(` Puerto: ${PORT}`);
+    console.log(`Host: ${HOST}`);
 });
