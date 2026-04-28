@@ -12,7 +12,16 @@ const getAll = async () => {
         .orderBy('fecha_creacion', 'desc')
         .limit(50)
         .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id, 
+            ...data,
+            // Compatibilidad con Dashboard (Frontend)
+            cliente: { nombre: data.nombre_cliente || 'Anónimo' },
+            tipoSiniestro: data.tipo_siniestro || 'Otros'
+        };
+    });
 };
 
 const getById = async (id) => {
@@ -94,7 +103,10 @@ const crearSOS = async (sosData) => {
             nombre_grua: masCercana.nombre,
             base_asignada: masCercana.id,
             distancia_km: distanciaMinima.toFixed(2)
-        }
+        },
+        // Compatibilidad con Dashboard (Frontend)
+        cliente: { nombre: nombre_cliente },
+        tipoSiniestro: tipo_siniestro
     };
 
     // Medición de rendimiento
@@ -120,15 +132,11 @@ const crearSOS = async (sosData) => {
     console.log(`[SOS] Guardado completado en ${Date.now() - start}ms`);
 
     // Notificar al Panel Admin via Socket.IO (No bloqueante para la respuesta al app)
-    try {
-        const io = socketConfig.getIO();
-        io.emit('nuevaAlerta', {
+        io.emit('newAsistencia', {
             id: docRef.id,
-            id_servicio,
-            cliente: nombre_cliente,
-            tipo: tipo_siniestro
+            ...nuevaAsistencia
         });
-        console.log(`[SOS] Alerta emitida vía Socket.IO`);
+        console.log(`[SOS] Alerta emitida vía Socket.IO (newAsistencia)`);
     } catch (e) {
         console.error("[SOS] Socket.io no disponible para emitir nuevaAlerta");
     }
